@@ -1,6 +1,7 @@
 // Vytvorenie databázy
 CREATE DATABASE BroadBand_Markets;
 
+// Extract
 // Vytvorenie staging tabulky
 CREATE OR REPLACE TABLE staging AS
 SELECT * FROM EUROPEAN_BROADBAND_MARKETS_2017_GATOR_EAGLE.EBM.EUROPEAN_BROADBAND_MARKETS_2017_FREE_DATASET;
@@ -8,12 +9,44 @@ SELECT * FROM EUROPEAN_BROADBAND_MARKETS_2017_GATOR_EAGLE.EBM.EUROPEAN_BROADBAND
 // Test
 select * from staging;
 
+// Load, Transform
 // Vytvorenie tabulky dimenzie dim_region 
 CREATE OR REPLACE TABLE dim_region AS
 SELECT 
     ROW_NUMBER() OVER (ORDER BY nuts3) AS id_region,
     nuts3,
-    nuts3_name
+    nuts3_name,
+    CASE
+        WHEN population < 50000 THEN 'Under 50K'
+        WHEN population BETWEEN 50000 AND 100000 THEN '50K-100K'
+        WHEN population BETWEEN 100000 AND 500000 THEN '100K-500K'
+        WHEN population BETWEEN 500000 AND 1000000 THEN '500K-1M'
+        WHEN population BETWEEN 1000000 AND 5000000 THEN '1M-5M'
+        WHEN population BETWEEN 5000000 AND 10000000 THEN '5M-10M'
+        WHEN population BETWEEN 10000000 AND 50000000 THEN '10M-50M'
+        WHEN population > 50000000 THEN '50M+'
+        ELSE 'Unknown'
+    END AS population_group, // Zaradenie do skupiny podla počtu obyvateĽov
+    CASE
+        WHEN ROUND(overall_fixed_bb_percentage, 2) < 0.20 THEN 'Under 20%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) BETWEEN 0.20 AND 0.39 THEN '20%-39%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) BETWEEN 0.40 AND 0.59 THEN '40%-59%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) BETWEEN 0.60 AND 0.79 THEN '60%-79%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) BETWEEN 0.80 AND 0.89 THEN '80%-89%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) BETWEEN 0.90 AND 0.99 THEN '90%-99%'
+        WHEN ROUND(overall_fixed_bb_percentage, 2) > 0.99 THEN '100%'
+        ELSE 'Unknown'
+    END AS bb_coverage_group, // Zaradenie do skupiny podla % broadband pripojenia
+    CASE
+        WHEN ROUND(overall_nga_percentage, 2) < 0.20 THEN 'Under 20%'
+        WHEN ROUND(overall_nga_percentage, 2) BETWEEN 0.20 AND 0.39 THEN '20%-39%'
+        WHEN ROUND(overall_nga_percentage, 2) BETWEEN 0.40 AND 0.59 THEN '40%-59%'
+        WHEN ROUND(overall_nga_percentage, 2) BETWEEN 0.60 AND 0.79 THEN '60%-79%'
+        WHEN ROUND(overall_nga_percentage, 2) BETWEEN 0.80 AND 0.89 THEN '80%-89%'
+        WHEN ROUND(overall_nga_percentage, 2) BETWEEN 0.90 AND 0.99 THEN '90%-99%'
+        WHEN ROUND(overall_nga_percentage, 2) > 0.99 THEN '100%'
+        ELSE 'Unknown'
+    END AS nga_coverage_group, // Zaradenie do skupiny podla % nga pripojenia
 FROM staging;
 
 // Overenie
@@ -26,7 +59,8 @@ SELECT
     country,
     country_code
 FROM (SELECT DISTINCT country, country_code FROM staging);
-//SELECT DISTINCT country, country_code FROM staging;
+
+SELECT DISTINCT country, country_code FROM staging; // Vytiahnutie len jedinečných krajín
 
 // Overenie
 SELECT * FROM dim_country;
@@ -102,3 +136,7 @@ JOIN dim_date d ON s.reported_at = d.reported_at;
 
 // Overenie
 SELECT * FROM fact_broadband ORDER BY id_record;
+SELECT * FROM fact_broadband ORDER BY population DESC;
+
+// Vymazanie staging tabuľky
+DROP TABLE IF EXISTS staging;
