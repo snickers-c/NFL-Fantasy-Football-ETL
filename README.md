@@ -1,5 +1,5 @@
-# European-Broadband-Markets-ETL
-Implementácia ELT procesu v Snowflake a vytvorenie dátového skladu so schémou Star na datasete [European-Broadband-Markets-2017](https://app.snowflake.com/marketplace/listing/GZSVZ6EW2A/expert-intelligence-european-broadband-markets-2017?search=europe&pricing=free&available=available). Dataset má údaje z 1405 regiónov z 30 štátov. (Zameraním projektu je preskúmať pokrytie jednotlivých technológií prenosu dát na území Európy v roku 2017.) TOTO UPRAVIŤ!!
+# European-Broadband-Markets-ELT
+Implementácia ELT procesu v Snowflake a vytvorenie dátového skladu so schémou Star na datasete [European-Broadband-Markets-2017](https://app.snowflake.com/marketplace/listing/GZSVZ6EW2A/expert-intelligence-european-broadband-markets-2017?search=europe&pricing=free&available=available). Dataset má údaje z 1405 regiónov z 30 štátov. Zameraním projektu je preskúmať pokrytie jednotlivých technológií prenosu dát v  Európskych krajinách a ich regiónoch v roku 2017.
 
 <hr>
 
@@ -8,7 +8,7 @@ Analyzujeme dáta o technológiach prenosu dát, ich pokrytí v jednotlivých š
 - Identifikovať krajiny s najváčším pokrytím vysokorýchlostného internetu
 - Zistiť podiel káblových technológií využívaných v rozných krajinách
 - Zobraziť podiel slovenských krajov na totálne pokrytie NGA na Slovensku
-- Zoradiť rôzne regióny v Európe podľa roznych kritérií
+- Zoradiť rôzne regióny v Európe podľa rôznych kritérií
 - Zobraziť vzťah medzi hustotou obyvateľstva a pokrytím vysokorýchlostného internetu
 
 Dataset obsahuje jednu tabulku `EUROPEAN_BROADBAND_MARKETS_2017_FREE_DATASET`, ktorá obsahuje údáje o počte obyvateľov, domácností podľa regiónov a štátov a štatistiky o využívaní jednotlivých technológií (DSL, VDSL, FTTP...). 
@@ -22,16 +22,16 @@ Relačný model dát z tohoto datasetu je znázornený v entitno-relačnom diagr
 <p align="center">
   <img src="img/erd-schema.png">
   <br>
-  <em>Obrázok 1 - Entitno_relačná schéma</em>
+  <em>Obrázok 1 - Entitno-relačná schéma</em>
 </p>
 
 <hr>
 
 ## 2. Dimenzionálny model
 Návrh schémy hviezdy podľa Kimballovej metodológie, obsahuje 1 tabuľku faktov `fact_broadband`, ktorá je prepojená s nasledujúcimi 3 dimenziami:
-- `dim_region` ukladá názov regiónu, jeho skratku a kategórie do ktorých spadá. SCD typ 1
-- `dim_country` ukladá krajinu a jej skratku. SCD typ 1
-- `dim_date` obsahuje dátum merania štatistík. SCD typ 0
+- `dim_region` ukladá názov regiónu, jeho skratku a kategórie do ktorých spadá. SCD typ 1. Vzťah k tabuľke faktov je 1:N
+- `dim_country` ukladá krajinu a jej skratku. SCD typ 1. Vzťah k tabuľke faktov je 1:N
+- `dim_date` obsahuje dátum merania štatistík. SCD typ 0. Vzťah k tabuľke faktov je 1:N
 
 Tabulka faktov `fact_broadband` obsahuje PK `id_record`, FK `id_region, id_country, id_date` a ďalej údaje o ploche kraja, počte obyvateľov, hustoty obyvateľstva, počtu domácností a ďalšie údaje zamerané na počet obyvateľstva využívajúceho danú technológiu a jej percentuálna časť s celkového obyvateľstva. 
 
@@ -214,7 +214,7 @@ SELECT DISTINCT country, country_code FROM staging; // Vytiahnutie len jedinečn
 SELECT * FROM dim_country;
 ```
 
-Po dokončení ETL procesu môžeme uvoľniť priestor odstránením zdrojových dát zo staging tabuľky pomocou príkazu:
+Po dokončení ELT procesu môžeme uvoľniť priestor odstránením zdrojových dát zo staging tabuľky pomocou príkazu:
 
 **SQL kód:**
 ```sql
