@@ -4,9 +4,12 @@ Implementácia ELT procesu v Snowflake a vytvorenie dátového skladu so schémo
 <hr>
 
 ## 1. Úvod a popis zdrojových dát
-(Analyzujeme dáta o technológiach prenosu dát, ich pokrytí v jednotlivých štátoch a ich regiónov. Cieľ je:
-- Zistiť prístupnosť prenosových technológií
-- Identifikovať regióny) TOTO UPRAVIŤ!!
+Analyzujeme dáta o technológiach prenosu dát, ich pokrytí v jednotlivých štátoch a ich regiónov. Cieľ je:
+- Identifikovať krajiny s najváčším pokrytím vysokorýchlostného internetu
+- Zistiť podiel káblových technológií využívaných v rozných krajinách
+- Zobraziť podiel slovenských krajov na totálne pokrytie NGA na Slovensku
+- Zoradiť rôzne regióny v Európe podľa roznych kritérií
+- Zobraziť vzťah medzi hustotou obyvateľstva a pokrytím vysokorýchlostného internetu
 
 Dataset obsahuje jednu tabulku `EUROPEAN_BROADBAND_MARKETS_2017_FREE_DATASET`, ktorá obsahuje údáje o počte obyvateľov, domácností podľa regiónov a štátov a štatistiky o využívaní jednotlivých technológií (DSL, VDSL, FTTP...). 
 
@@ -222,7 +225,193 @@ DROP TABLE IF EXISTS staging;
 <hr>
 
 ## 4. Vizualizácia dát
+V tejto časti prezentujeme 6 vizualizácií, ktoré zobrazujú rôzne faktické údaje a porovnania.
+<hr>
 
+### 4.1 Pokrytie internetom >100 Mbps (%) podľa krajín.
+**Účel:** Porovnať pripravenosť európskych krajín na ultra-vysoké rýchlosti a určiť trhových lídrov.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+SELECT 
+    d.country,
+    TO_VARCHAR(ROUND(AVG(f.broadband_above_100mbps_percentage) * 100, 2)) || '%' AS avg_percentage
+FROM dim_country AS d
+JOIN fact_broadband AS f
+    ON d.id_country = f.id_country
+GROUP BY d.country
+ORDER BY AVG(f.broadband_above_100mbps_percentage) DESC;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_1.png">
+  <br>
+  <em>Obrázok 3 - Vizualizácia 1</em>
+</p>
+
+**Výsledok:** Existuje obrovská digitálna priepasť medzi lídrami (Malta, Holandsko nad 90 %) a krajinami na chvoste (Grécko pod 1 %), čo naznačuje nerovnomerný stav modernizácie sietí v EÚ.
+<hr>
+
+### 4.2 Pokrytie NGA v slovenských krajoch.
+**Účel:** Vizualizovať distribúciu obyvateľstva s prístupom k moderným sieťam (NGA) v rámci Slovenskej republiky.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+SELECT 
+    r.NUTS3_NAME, 
+    f.OVERALL_NGA_POPULATION
+FROM PUBLIC.DIM_REGION r
+JOIN PUBLIC.FACT_BROADBAND f ON r.ID_REGION = f.ID_REGION
+WHERE r.NUTS3_NAME != 'Slovakia'
+  AND r.NUTS3 LIKE 'SK0%'
+ORDER BY f.OVERALL_NGA_POPULATION DESC;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_2.png">
+  <br>
+  <em>Obrázok 4 - Vizualizácia 2</em>
+</p>
+
+**Výsledok:** Pokrytie je relatívne rovnomerne rozdelené medzi kraje, avšak Bratislavský a Košický kraj vedú, čo odzrkadľuje koncentráciu infraštruktúry v okolí dvoch najväčších miest.
+<hr>
+
+### 4.3 Zobrazenie penetrácie technológií v Európe.
+**Účel:** Analyzovať technologický mix (infraštruktúrny profil) jednotlivých štátov.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+SELECT
+    d.country,
+    ROUND(AVG(f.dsl_percentage) * 100, 2) AS dsl_pct,
+    ROUND(AVG(f.fttp_percentage) * 100, 2) AS fttp_pct,
+    ROUND(AVG(f.cable_percentage) * 100, 2) AS cable_pct
+FROM fact_broadband f
+JOIN dim_country d
+    ON f.id_country = d.id_country
+GROUP BY d.country
+ORDER BY fttp_pct DESC;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_3.png">
+  <br>
+  <em>Obrázok 5 - Vizualizácia 3</em>
+</p>
+
+**Výsledok:** Každý štát má unikátnu stratégiu – kým Lotyšsko alebo Rumunsko dominujú v optike (FTTP), krajiny ako Grécko či Taliansko stále kriticky spoliehajú na staršie metalické DSL vedenia.
+<hr>
+
+### 4.4 Bodový graf korelácie hustoty a rýchlosti internetu.
+**Účel:** Zistiť, či vysoká hustota obyvateľstva v regióne automaticky zaručuje lepšiu dostupnosť rýchleho internetu.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+SELECT
+    d.country,
+    AVG(f.population_density) AS population_density,
+    ROUND(AVG(f.broadband_above_100mbps_percentage) * 100, 2) AS broadband_100mbps_pct
+FROM fact_broadband f
+JOIN dim_country d
+    ON f.id_country = d.id_country
+GROUP BY d.country;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_4.png">
+  <br>
+  <em>Obrázok 6 - Vizualizácia 4</em>
+</p>
+
+**Výsledok:** Bodový graf ukazuje rozptyl, ktorý potvrdzuje, že hustota je faktorom, ale nie pravidlom; existujú hustejšie regióny s nižším pokrytím než redšie osídlené oblasti, čo naznačuje vplyv štátnych investícií.
+<hr>
+
+### 4.5 Top 20 regiónov s najlepším pokrytím internetu >100 Mbps.
+**Účel:** Identifikovať najlepšie regióny z pohľadu digitálnej infraštruktúry naprieč celou Európou.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+SELECT 
+    r.nuts3_name || ' (' || c.country || ')' AS region_location,
+    TO_VARCHAR(ROUND(MAX(f.broadband_above_100mbps_percentage) * 100, 2)) || '%' AS coverage_100mbps_pct
+FROM fact_broadband f
+JOIN dim_region r 
+    ON f.id_region = r.id_region
+JOIN dim_country c 
+    ON f.id_country = c.id_country
+WHERE r.nuts3 NOT LIKE '%-TOTAL%'
+GROUP BY 1
+ORDER BY coverage_100mbps_pct DESC
+LIMIT 20;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_5.png">
+  <br>
+  <em>Obrázok 7 - Vizualizácia 5</em>
+</p>
+
+**Výsledok:** Rebríčku dominujú švajčiarske, belgické a maltské regióny, ktoré dosahujú takmer dokonalé (99,9 %) pokrytie, čím tvoria európsku špičku v konektivite.
+<hr>
+
+### 4.6 Top 20 regiónov s najväčším kladným rozdielom oproti priemeru ich krajiny.
+**Účel:** Nájsť regióny, ktoré najviac vyčnievajú (pozitívne) nad priemerom svojej vlastnej krajiny.
+
+**SQL kód:**
+```sql
+USE DATABASE BROADBAND_MARKETS;
+USE SCHEMA BROADBAND_MARKETS.PUBLIC;
+
+WITH RegionalBase AS (
+    SELECT 
+        r.nuts3_name || ' (' || c.country || ')' AS region_label,
+        c.country,
+        f.overall_nga_percentage * 100 AS nga_pct
+    FROM fact_broadband f
+    JOIN dim_region r 
+        ON f.id_region = r.id_region
+    JOIN dim_country c 
+        ON f.id_country = c.id_country
+    WHERE r.nuts3_name NOT LIKE '%-TOTAL%' 
+)
+SELECT 
+    region_label,
+    ROUND(nga_pct, 2) AS region_nga_pct,
+    ROUND(AVG(nga_pct) OVER(PARTITION BY country), 2) AS national_avg_pct,
+    ROUND(nga_pct - AVG(nga_pct) OVER(PARTITION BY country), 2) AS deviation_pct
+FROM RegionalBase
+ORDER BY deviation_pct DESC
+LIMIT 20;
+```
+
+**Vizualizácia:**
+<p align="center">
+  <img src="img/graph_6.png">
+  <br>
+  <em>Obrázok 8 - Vizualizácia 6</em>
+</p>
+
+**Výsledok:** Najväčší náskok majú metropoly ako Paríž, Bukurešť a Sofia, čo potvrdzuje, že hlavné mestá sú hlavnými motormi digitalizácie a často fungujú ako „izolované ostrovy“ vysokej rýchlosti vo svojej krajine.
 <hr>
 
 **Autori:** [Matúš Gabaš](https://github.com/snickers-c) a [Juraj Daniš](https://github.com/Jur1n0)

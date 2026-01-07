@@ -24,7 +24,7 @@ WHERE r.NUTS3_NAME != 'Slovakia'
   AND r.NUTS3 LIKE 'SK0%'
 ORDER BY f.OVERALL_NGA_POPULATION DESC;
 
-//Graf 3: Skupinový stĺpcový graf zobrazujúci penetráciu technológií.
+//Graf 3: Zobrazenie penetrácie technológií v Európe.
 USE DATABASE BROADBAND_MARKETS;
 USE SCHEMA BROADBAND_MARKETS.PUBLIC;
 
@@ -39,7 +39,7 @@ JOIN dim_country d
 GROUP BY d.country
 ORDER BY fttp_pct DESC;
 
-//Graf 4: Bodový graf korelácie hustoty a rýchlosti.
+//Graf 4: Bodový graf korelácie hustoty a rýchlosti internetu.
 
 USE DATABASE BROADBAND_MARKETS;
 USE SCHEMA BROADBAND_MARKETS.PUBLIC;
